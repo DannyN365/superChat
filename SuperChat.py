@@ -3,7 +3,6 @@ import toml
 import os
 import google.generativeai as genai
 import json
-import time
 
 # ---------- API KEY ----------
 def get_api_key():
@@ -70,44 +69,35 @@ if "query" not in st.session_state:
 if "submitted_flag" not in st.session_state:
     st.session_state.submitted_flag = False
 
-# ---------- TTS BUTTON (PURE HTML/JS) ----------
-def render_tts_button(text: str):
-    """Render an HTML button that uses browser speech synthesis when clicked."""
+# ---------- TTS: JS INJECTION ----------
+def speak_text(text: str):
+    """Use the browser's built-in speech synthesis to read the text aloud."""
     if not text:
         return
+
     escaped = json.dumps(text)
     st.markdown(
         f"""
-        <button onclick='
-            (function() {{
-                const msg = new SpeechSynthesisUtterance({escaped});
-                msg.rate = 1;
-                msg.pitch = 1;
-                msg.volume = 1;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(msg);
-            }})();
-        ' style="
-            margin-top: 0.25rem;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.4rem;
-            border: 1px solid #888;
-            background: #262626;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.8rem;
-        ">
-            🔊 Let Karen read it out loud
-        </button>
+        <script>
+        (function() {{
+            const msg = new SpeechSynthesisUtterance({escaped});
+            msg.rate = 1;
+            msg.pitch = 1;
+            msg.volume = 1;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
+        }})();
+        </script>
         """,
         unsafe_allow_html=True,
     )
 
 # ---------- STREAMING ----------
-
+import time
 
 def chat_with_gemini_stream(user_input: str):
-    for attempt in range(2):  # 0 and 1 → at most 2 tries
+    """Stream response from Gemini and yield partial text."""
+    for attempt in range(2):  # simple retry for 503
         try:
             response = st.session_state.chat.send_message(user_input, stream=True)
             full_text = ""
@@ -115,39 +105,39 @@ def chat_with_gemini_stream(user_input: str):
                 if chunk.text:
                     full_text += chunk.text
                     yield full_text
-            return  # success, stop the function
+            return
         except Exception as e:
             msg = str(e)
             if "503" in msg and attempt == 0:
-                # First time it failed – Karen sighs and quietly retries
-                time.sleep(1)  # short pause before retry
+                time.sleep(1)
                 continue
-            elif "503" in msg:
+            if "503" in msg:
                 yield (
-                    "Yeah, no. The servers are still overloaded. "
-                    "Try again later, I’m not fighting with Google all day."
+                    "Ugh, apparently the model is overloaded right now. "
+                    "Not my fault. Try again in a bit."
                 )
             else:
-                yield f"Something broke, and shockingly it wasn't you this time: {msg}"
+                yield f"Something broke and, shockingly, it wasn't you this time: {msg}"
             return
-
 
 # ---------- UI ----------
 st.title("The honest AI Assistant")
 
-# New chat button – clears history + starts a fresh chat
+# New chat button – just clear state; Streamlit reruns automatically
 if st.button("🧹 New chat"):
     st.session_state.history = []
     st.session_state.chat = create_chat()
     st.session_state.query = ""
     st.session_state.submitted_flag = False
-    st.experimental_rerun()
+    st.session_state.pop("current_query", None)
 
-# Show previous conversation
-for turn in st.session_state.history:
+# Show previous conversation + TTS buttons
+for i, turn in enumerate(st.session_state.history):
     st.markdown(f"**You:** {turn['user']}")
     st.write(turn['assistant'])
-    render_tts_button(turn['assistant'])
+    # Streamlit button per turn; on click we inject JS to speak
+    if st.button("🔊 Let Karen read it out loud", key=f"tts_{i}"):
+        speak_text(turn["assistant"])
     st.markdown("---")
 
 # ---------- SUBMIT CALLBACK ----------
@@ -155,7 +145,6 @@ def handle_submit():
     text = st.session_state.query.strip()
     if not text:
         return
-    # Store last query, clear input, mark submit
     st.session_state.current_query = text
     st.session_state.query = ""
     st.session_state.submitted_flag = True
@@ -199,7 +188,6 @@ if st.session_state.submitted_flag:
     user_q = st.session_state.get("current_query", "").strip()
     if user_q:
         st.markdown(f"**You:** {user_q}")
-
         answer_placeholder = st.empty()
         full_answer = ""
         for partial in chat_with_gemini_stream(user_q):
@@ -207,7 +195,6 @@ if st.session_state.submitted_flag:
             answer_placeholder.write(full_answer)
 
         # Save full turn in history
-        st.session_state.history.append({
-            "user": user_q,
-            "assistant": full_answer,
-        })
+        st.session_state.history.append(
+            {"user": user_q, "assistant": full_answer}
+        )
