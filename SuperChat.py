@@ -150,9 +150,24 @@ if st.session_state.submitted_flag:
         full_answer = partial
         # Update the placeholder as we receive more text
         answer_placeholder.write(full_answer)
-
+        speak_text(full_answer)
     # Save final answer in session_state (e.g. if you want history later)
     st.session_state.last_answer = full_answer
+
+def speak_text(text):
+    st.markdown(
+        f"""
+        <script>
+        const utterance = new SpeechSynthesisUtterance("{text}");
+        utterance.pitch = 1;
+        utterance.rate = 1;
+        utterance.volume = 1;
+        window.speechSynthesis.speak(utterance);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 # Show last answer after reruns too
 if st.session_state.last_answer and not st.session_state.submitted_flag:
