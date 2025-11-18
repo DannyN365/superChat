@@ -167,7 +167,8 @@ st.markdown(
 
 # ---------- CALL MODEL (STREAMING) & DISPLAY ANSWER ----------
 if st.session_state.submitted_flag:
-    # Reset the flag so we don't resend on rerun
+    # We entered here because the user just submitted a new question
+    # Reset the flag so we don't resend on future reruns
     st.session_state.submitted_flag = False
 
     # Show user's message
@@ -186,10 +187,13 @@ if st.session_state.submitted_flag:
     # Save final answer in session_state
     st.session_state.last_answer = full_answer
 
-    # 🔊 Make Karen read it out loud
-    speak_text(full_answer)
+else:
+    # No new submission this run, but we may have a previous answer to show
+    if st.session_state.last_answer:
+        st.markdown(f"**You:** {st.session_state.last_query}")
+        st.write(st.session_state.last_answer)
 
-# Show last answer after reruns too + TTS button
-if st.session_state.last_answer and not st.session_state.submitted_flag:
-    if st.button("🔊 Read it out loud for me"):
-        speak_text(st.session_state.last_answer)
+        # 🔊 Button to read the last answer out loud
+        if st.button("🔊 Let Karen read it out loud"):
+            speak_text(st.session_state.last_answer)
+
