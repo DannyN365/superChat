@@ -3,6 +3,7 @@ import toml
 import os
 import google.generativeai as genai
 import json
+import time
 
 # ---------- API KEY ----------
 def get_api_key():
@@ -69,23 +70,40 @@ if "query" not in st.session_state:
 if "submitted_flag" not in st.session_state:
     st.session_state.submitted_flag = False
 
-# ---------- TTS: JS INJECTION ----------
-def speak_text(text: str):
-    """Use the browser's built-in speech synthesis to read the text aloud."""
+# ---------- TTS BUTTON (pure HTML + JS) ----------
+def render_tts_button(text: str, idx: int):
+    """Render a pure-HTML button that speaks the given text when clicked."""
     if not text:
         return
 
-    escaped = json.dumps(text)
+    escaped = json.dumps(text)  # safely escape for JS
+
     st.markdown(
         f"""
+        <button id="karen-tts-{idx}" style="
+            margin-top: 0.25rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.4rem;
+            border: 1px solid #888;
+            background: #262626;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.8rem;
+        ">
+            🔊 Let Karen read it out loud
+        </button>
         <script>
         (function() {{
-            const msg = new SpeechSynthesisUtterance({escaped});
-            msg.rate = 1;
-            msg.pitch = 1;
-            msg.volume = 1;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(msg);
+            const btn = document.getElementById("karen-tts-{idx}");
+            if (!btn) return;
+            btn.addEventListener("click", function() {{
+                const msg = new SpeechSynthesisUtterance({escaped});
+                msg.rate = 1;
+                msg.pitch = 1;
+                msg.volume = 1;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(msg);
+            }});
         }})();
         </script>
         """,
@@ -93,8 +111,6 @@ def speak_text(text: str):
     )
 
 # ---------- STREAMING ----------
-import time
-
 def chat_with_gemini_stream(user_input: str):
     """Stream response from Gemini and yield partial text."""
     for attempt in range(2):  # simple retry for 503
@@ -131,13 +147,11 @@ if st.button("🧹 New chat"):
     st.session_state.submitted_flag = False
     st.session_state.pop("current_query", None)
 
-# Show previous conversation + TTS buttons
+# --- Show previous conversation (with TTS) ---
 for i, turn in enumerate(st.session_state.history):
     st.markdown(f"**You:** {turn['user']}")
     st.write(turn['assistant'])
-    # Streamlit button per turn; on click we inject JS to speak
-    if st.button("🔊 Let Karen read it out loud", key=f"tts_{i}"):
-        speak_text(turn["assistant"])
+    render_tts_button(turn["assistant"], idx=i)
     st.markdown("---")
 
 # ---------- SUBMIT CALLBACK ----------
@@ -188,6 +202,7 @@ if st.session_state.submitted_flag:
     user_q = st.session_state.get("current_query", "").strip()
     if user_q:
         st.markdown(f"**You:** {user_q}")
+
         answer_placeholder = st.empty()
         full_answer = ""
         for partial in chat_with_gemini_stream(user_q):
@@ -198,3 +213,6 @@ if st.session_state.submitted_flag:
         st.session_state.history.append(
             {"user": user_q, "assistant": full_answer}
         )
+
+        # Render TTS button for THIS answer too (index = last in history)
+        render_tts_button(full_answer, idx=len(st.session_state.history) - 1)
