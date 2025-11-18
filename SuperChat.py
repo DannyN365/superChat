@@ -49,7 +49,7 @@ Rules:
 
 
 def speak_text(text: str):
-    """Use the browser's built-in speech synthesis to read the text aloud."""
+    """Render a button that uses browser speech synthesis to read the text aloud."""
     if not text:
         return
 
@@ -57,18 +57,39 @@ def speak_text(text: str):
 
     st.markdown(
         f"""
+        <div id="karen-tts-container"></div>
         <script>
-        const msg = new SpeechSynthesisUtterance({escaped});
-        msg.rate = 1;
-        msg.pitch = 1;
-        msg.volume = 1;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(msg);
+        const container = document.getElementById("karen-tts-container");
+        if (container) {{
+            container.innerHTML = `
+                <button id="karen-tts-btn" style="
+                    margin-top: 0.5rem;
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 0.4rem;
+                    border: 1px solid #999;
+                    background: #f5f5f5;
+                    cursor: pointer;
+                    font-size: 0.9rem;
+                ">
+                    🔊 Don't want to read, tell me!
+                </button>
+            `;
+            const btn = document.getElementById("karen-tts-btn");
+            if (btn) {{
+                btn.onclick = () => {{
+                    const msg = new SpeechSynthesisUtterance({escaped});
+                    msg.rate = 1;
+                    msg.pitch = 1;
+                    msg.volume = 1;
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(msg);
+                }};
+            }}
+        }}
         </script>
         """,
         unsafe_allow_html=True
     )
-
 
 # Create model & chat only once
 @st.cache_resource(show_spinner=False)
