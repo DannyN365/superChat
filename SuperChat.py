@@ -3,14 +3,26 @@ import toml
 import os
 import google.generativeai as genai
 
-# ---------- CONFIG & MODEL SETUP ----------
-secrets_path = os.path.join(".secrets", "secrets.toml")
-secrets = toml.load(secrets_path)
-api_key = secrets.get("GEMINI_API_KEY")
 
-if not api_key:
-    st.error("GEMINI_API_KEY not found in .secrets/secrets.toml")
+def get_api_key():
+    # 1) Try Streamlit Cloud / st.secrets first
+    if "GEMINI_API_KEY" in st.secrets:
+        return st.secrets["GEMINI_API_KEY"]
+
+    # 2) Fallback to local dev file: .secrets/secrets.toml
+    secrets_path = os.path.join(".secrets", "secrets.toml")
+    if os.path.exists(secrets_path):
+        secrets = toml.load(secrets_path)
+        return secrets.get("GEMINI_API_KEY")
+
+    # 3) Nothing found → fail nicely
+    st.error(
+        "GEMINI_API_KEY not found.\n\n"
+        "Add it to Streamlit Secrets (st.secrets) or to .secrets/secrets.toml locally."
+    )
     st.stop()
+
+api_key = get_api_key()
 
 genai.configure(api_key=api_key)
 
