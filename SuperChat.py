@@ -76,36 +76,33 @@ def render_tts_button(text: str, idx: int):
     if not text:
         return
 
-    escaped = json.dumps(text)  # safely escape for JS
+    # JSON-escape the text so it's safe inside JS string
+    escaped = json.dumps(text)
 
     st.markdown(
         f"""
-        <button id="karen-tts-{idx}" style="
-            margin-top: 0.25rem;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.4rem;
-            border: 1px solid #888;
-            background: #262626;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.8rem;
-        ">
-            🔊 Let Karen read it out loud
-        </button>
-        <script>
-        (function() {{
-            const btn = document.getElementById("karen-tts-{idx}");
-            if (!btn) return;
-            btn.addEventListener("click", function() {{
+        <button
+            style="
+                margin-top: 0.25rem;
+                padding: 0.3rem 0.6rem;
+                border-radius: 0.4rem;
+                border: 1px solid #888;
+                background: #262626;
+                color: #fff;
+                cursor: pointer;
+                font-size: 0.8rem;
+            "
+            onclick='(function() {{
                 const msg = new SpeechSynthesisUtterance({escaped});
                 msg.rate = 1;
                 msg.pitch = 1;
                 msg.volume = 1;
                 window.speechSynthesis.cancel();
                 window.speechSynthesis.speak(msg);
-            }});
-        }})();
-        </script>
+            }})()'
+        >
+            🔊 Just read it out loud!
+        </button>
         """,
         unsafe_allow_html=True,
     )
