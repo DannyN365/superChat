@@ -60,7 +60,7 @@ def chat_with_gemini_stream(user_input: str):
     except Exception as e:
         yield f"An error occurred: {e}"
 
-st.title("The best AI Assistant")
+st.title("The honest AI Assistant")
 
 # ---------- SESSION STATE DEFAULTS ----------
 if "query" not in st.session_state:
