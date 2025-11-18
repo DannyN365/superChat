@@ -2,7 +2,30 @@ import streamlit as st
 import toml
 import os
 import google.generativeai as genai
+import json
 
+
+def speak_text(text: str):
+    """Use the browser's built-in speech synthesis to read the text aloud."""
+    if not text:
+        return
+
+    # Safely escape text for JS
+    escaped = json.dumps(text)
+
+    st.markdown(
+        f"""
+        <script>
+        const msg = new SpeechSynthesisUtterance({escaped});
+        msg.rate = 1;
+        msg.pitch = 1;
+        msg.volume = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(msg);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
 
 def get_api_key():
     # 1) Try Streamlit Cloud / st.secrets first
@@ -154,19 +177,6 @@ if st.session_state.submitted_flag:
     # Save final answer in session_state (e.g. if you want history later)
     st.session_state.last_answer = full_answer
 
-def speak_text(text):
-    st.markdown(
-        f"""
-        <script>
-        const utterance = new SpeechSynthesisUtterance("{text}");
-        utterance.pitch = 1;
-        utterance.rate = 1;
-        utterance.volume = 1;
-        window.speechSynthesis.speak(utterance);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
 
 
 # Show last answer after reruns too
