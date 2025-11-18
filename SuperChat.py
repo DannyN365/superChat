@@ -3,6 +3,7 @@ import toml
 import os
 import google.generativeai as genai
 import json
+import time
 
 # ---------- API KEY ----------
 def get_api_key():
@@ -103,20 +104,33 @@ def render_tts_button(text: str):
     )
 
 # ---------- STREAMING ----------
+
+
 def chat_with_gemini_stream(user_input: str):
-    """
-    Stream response from Gemini and yield partial text
-    so we can update the UI as tokens arrive.
-    """
-    try:
-        response = st.session_state.chat.send_message(user_input, stream=True)
-        full_text = ""
-        for chunk in response:
-            if chunk.text:
-                full_text += chunk.text
-                yield full_text
-    except Exception as e:
-        yield f"An error occurred: {e}"
+    for attempt in range(2):  # 0 and 1 → at most 2 tries
+        try:
+            response = st.session_state.chat.send_message(user_input, stream=True)
+            full_text = ""
+            for chunk in response:
+                if chunk.text:
+                    full_text += chunk.text
+                    yield full_text
+            return  # success, stop the function
+        except Exception as e:
+            msg = str(e)
+            if "503" in msg and attempt == 0:
+                # First time it failed – Karen sighs and quietly retries
+                time.sleep(1)  # short pause before retry
+                continue
+            elif "503" in msg:
+                yield (
+                    "Yeah, no. The servers are still overloaded. "
+                    "Try again later, I’m not fighting with Google all day."
+                )
+            else:
+                yield f"Something broke, and shockingly it wasn't you this time: {msg}"
+            return
+
 
 # ---------- UI ----------
 st.title("The honest AI Assistant")
