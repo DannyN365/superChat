@@ -77,35 +77,47 @@ def render_tts_button(text: str, idx: int):
     if not text:
         return
 
-    escaped = json.dumps(text)  # safely escape for JS
+    escaped = json.dumps(text)  # JS-safe string literal, e.g. "Oh, joy..."
 
     html_code = f"""
-    <button
-        style="
-            margin-top: 4px;
-            padding: 4px 8px;
-            border-radius: 6px;
-            border: 1px solid #888;
-            background: #262626;
-            color: #fff;
-            cursor: pointer;
-            font-size: 12px;
-        "
-        onclick='
-            const msg = new SpeechSynthesisUtterance({escaped});
-            msg.rate = 1;
-            msg.pitch = 1;
-            msg.volume = 1;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(msg);
-        '
-    >
-        🔊 Let Karen read it out loud
-    </button>
+    <html>
+      <body style="margin:0; padding:0; background:transparent;">
+        <button
+            id="karen-tts-{idx}"
+            style="
+                margin-top: 4px;
+                padding: 4px 8px;
+                border-radius: 6px;
+                border: 1px solid #888;
+                background: #262626;
+                color: #fff;
+                cursor: pointer;
+                font-size: 12px;
+            "
+        >
+            🔊 Let Karen read it out loud
+        </button>
+
+        <script>
+          const text = {escaped};
+          const btn = document.getElementById("karen-tts-{idx}");
+          if (btn) {{
+            btn.addEventListener("click", () => {{
+              const msg = new SpeechSynthesisUtterance(text);
+              msg.rate = 1;
+              msg.pitch = 1;
+              msg.volume = 1;
+              window.speechSynthesis.cancel();
+              window.speechSynthesis.speak(msg);
+            }});
+          }}
+        </script>
+      </body>
+    </html>
     """
 
-    # Render in its own iframe so it's treated as real HTML
-    components.html(html_code, height=40)
+    import streamlit.components.v1 as components
+    components.html(html_code, height=50)
 
 # ---------- STREAMING ----------
 def chat_with_gemini_stream(user_input: str):
