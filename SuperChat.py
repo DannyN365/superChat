@@ -4,6 +4,7 @@ import os
 import google.generativeai as genai
 import json
 import time
+import streamlit.components.v1 as components
 
 # ---------- API KEY ----------
 def get_api_key():
@@ -70,42 +71,41 @@ if "query" not in st.session_state:
 if "submitted_flag" not in st.session_state:
     st.session_state.submitted_flag = False
 
-# ---------- TTS BUTTON (pure HTML + JS) ----------
+# ---------- TTS BUTTON VIA COMPONENT ----------
 def render_tts_button(text: str, idx: int):
-    """Render a pure-HTML button that speaks the given text when clicked."""
+    """Render a small HTML+JS component that speaks the given text when clicked."""
     if not text:
         return
 
-    # JSON-escape the text so it's safe inside JS string
-    escaped = json.dumps(text)
+    escaped = json.dumps(text)  # safely escape for JS
 
-    st.markdown(
-        f"""
-        <button
-            style="
-                margin-top: 0.25rem;
-                padding: 0.3rem 0.6rem;
-                border-radius: 0.4rem;
-                border: 1px solid #888;
-                background: #262626;
-                color: #fff;
-                cursor: pointer;
-                font-size: 0.8rem;
-            "
-            onclick='(function() {{
-                const msg = new SpeechSynthesisUtterance({escaped});
-                msg.rate = 1;
-                msg.pitch = 1;
-                msg.volume = 1;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(msg);
-            }})()'
-        >
-            🔊 Just read it out loud!
-        </button>
-        """,
-        unsafe_allow_html=True,
-    )
+    html_code = f"""
+    <button
+        style="
+            margin-top: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #888;
+            background: #262626;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        "
+        onclick='
+            const msg = new SpeechSynthesisUtterance({escaped});
+            msg.rate = 1;
+            msg.pitch = 1;
+            msg.volume = 1;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
+        '
+    >
+        🔊 Let Karen read it out loud
+    </button>
+    """
+
+    # Render in its own iframe so it's treated as real HTML
+    components.html(html_code, height=40)
 
 # ---------- STREAMING ----------
 def chat_with_gemini_stream(user_input: str):
