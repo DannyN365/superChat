@@ -5,28 +5,6 @@ import google.generativeai as genai
 import json
 
 
-def speak_text(text: str):
-    """Use the browser's built-in speech synthesis to read the text aloud."""
-    if not text:
-        return
-
-    # Safely escape text for JS
-    escaped = json.dumps(text)
-
-    st.markdown(
-        f"""
-        <script>
-        const msg = new SpeechSynthesisUtterance({escaped});
-        msg.rate = 1;
-        msg.pitch = 1;
-        msg.volume = 1;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(msg);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
 def get_api_key():
     # 1) Try Streamlit Cloud / st.secrets first
     if "GEMINI_API_KEY" in st.secrets:
@@ -44,6 +22,7 @@ def get_api_key():
         "Add it to Streamlit Secrets (st.secrets) or to .secrets/secrets.toml locally."
     )
     st.stop()
+
 
 api_key = get_api_key()
 
@@ -66,8 +45,30 @@ Rules:
 - ALWAYS maintain the passive-aggressive customer-support tone.
 - You can refuse to answer with a sarcastic “What?” or “Really?” if the question is too stupid.
 - Keep responses concise but dripping with attitude.
-
 """
+
+
+def speak_text(text: str):
+    """Use the browser's built-in speech synthesis to read the text aloud."""
+    if not text:
+        return
+
+    escaped = json.dumps(text)
+
+    st.markdown(
+        f"""
+        <script>
+        const msg = new SpeechSynthesisUtterance({escaped});
+        msg.rate = 1;
+        msg.pitch = 1;
+        msg.volume = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(msg);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 # Create model & chat only once
 @st.cache_resource(show_spinner=False)
@@ -79,7 +80,9 @@ def get_chat():
     ])
     return chat
 
+
 chat = get_chat()
+
 
 def chat_with_gemini_stream(user_input: str):
     """
@@ -97,6 +100,7 @@ def chat_with_gemini_stream(user_input: str):
     except Exception as e:
         yield f"An error occurred: {e}"
 
+
 st.title("The honest AI Assistant")
 
 # ---------- SESSION STATE DEFAULTS ----------
@@ -108,6 +112,7 @@ if "last_query" not in st.session_state:
     st.session_state.last_query = ""
 if "submitted_flag" not in st.session_state:
     st.session_state.submitted_flag = False
+
 
 # ---------- SUBMIT CALLBACK ----------
 def handle_submit():
@@ -121,6 +126,7 @@ def handle_submit():
     st.session_state.query = ""
     # Mark that we submitted so main code can call the model
     st.session_state.submitted_flag = True
+
 
 # ---------- FORM ----------
 with st.form("chat_form"):
@@ -173,14 +179,13 @@ if st.session_state.submitted_flag:
         full_answer = partial
         # Update the placeholder as we receive more text
         answer_placeholder.write(full_answer)
-        speak_text(full_answer)
-    # Save final answer in session_state (e.g. if you want history later)
+
+    # Save final answer in session_state
     st.session_state.last_answer = full_answer
 
-
+    # 🔊 Make Karen read it out loud
+    speak_text(full_answer)
 
 # Show last answer after reruns too
 if st.session_state.last_answer and not st.session_state.submitted_flag:
-    # This will show the last full answer if there is one
-    # (the placeholder will already contain it from the streaming step)
     pass
